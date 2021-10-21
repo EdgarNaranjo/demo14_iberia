@@ -37,7 +37,7 @@ class User(http.Controller):
             query = [('active', '=', True)]
             get_users = http.request.env["res.users"].sudo().search(query)
             if not get_users:
-                return json.dumps({"status": 404, "response": [], "message": "No existe el usuario"})
+                return {"status": 404, "response": [], "message": "No existe el usuario"}
             users = []
             for user in get_users:
                 vals = {
@@ -53,7 +53,7 @@ class User(http.Controller):
             users.append(vals)
         except Exception as e:
             raise Exception(e)
-        return json.dumps({'status': 200, 'response': users, 'message': 'Usuarios recuperados correctamente'}, sort_keys=False)
+        return {'status': 200, 'response': users, 'message': 'Usuarios recuperados correctamente'}
 
     # /hr_app/api/v1/user/get
     @http.route('/hr_app/api/' + version + '/user/get', auth="public", methods=['GET'], csrf=False, type='json', cors="*")
@@ -93,7 +93,7 @@ class User(http.Controller):
             if not get_user:
                 data['status'] = 404
                 data['message'] = 'No existe usuario'
-                return json.dumps(data)
+                return data
             users = []
             experiences = []
             skills = []
@@ -135,4 +135,4 @@ class User(http.Controller):
             data['message'] = 'Usuario recuperado correctamente'
         except Exception as e:
             raise Exception(e)
-        return json.dumps(data, sort_keys=False)
+        return data
