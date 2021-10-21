@@ -64,7 +64,6 @@ class User(http.Controller):
             # if api_key_valid["status"] != 200:
             #     return json.dumps(api_key_valid)
             # else:
-            # Parámetros de entrada
             data = {
                 "status": "",
                 "response": [],
@@ -98,6 +97,7 @@ class User(http.Controller):
             experiences = []
             skills = []
             for user in get_user:
+                # add employee
                 get_employee = http.request.env["hr.employee"].sudo().search([('user_id', '=', user.id)])
                 if get_employee:
                     for employee in get_employee:

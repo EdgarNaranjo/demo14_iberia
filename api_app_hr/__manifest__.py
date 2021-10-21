@@ -22,7 +22,7 @@
 
 {
     'name': 'API App HR',
-    'version': '14.1.1.0.0',
+    'version': '14.1.1.0.1',
     'category': 'Extra Tools',
     'summary': """API App HR for Odoo""",
     'description': """API App HR for Odoo.""",
