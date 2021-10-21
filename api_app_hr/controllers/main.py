@@ -4,6 +4,8 @@ import json
 from odoo import models
 from odoo import http, _, exceptions
 from odoo.http import request
+import logging
+_logger = logging.getLogger(__name__)
 
 version = "v1"
 # clave api test
@@ -23,8 +25,53 @@ class User(http.Controller):
         else:
             return '{"status": 200, "response": "Success", "message": "API key valid"}'
 
+    @classmethod
+    def get_employee(self, user, vals):
+        obj_employee = http.request.env["hr.employee"].sudo().search([('user_id', '=', user.id)])
+        if obj_employee:
+            for employee in obj_employee:
+                vals["Genero"] = employee.gender
+                vals["Campo"] = employee.study_field
+                vals["Study"] = employee.study_school
+                vals["Nivel"] = employee.certificate
+                if employee.resume_line_ids:
+                    all_experiences = employee.resume_line_ids
+                    experience_ids = User.get_experience(all_experiences, vals)
+                    if experience_ids:
+                        _logger.info('<<Experiencies recuperadas>>')
+                if employee.employee_skill_ids:
+                    all_skills = employee.employee_skill_ids
+                    skill_ids = User.get_skills(all_skills, vals)
+                    if skill_ids:
+                        _logger.info('<<Habilidades recuperadas>>')
+        return vals
+
+    @classmethod
+    def get_experience(self, all_experiences, vals):
+        experiences = []
+        for experience in all_experiences:
+            val_exp = {
+                "Sitio": experience.name,
+                "Descripcion": experience.description,
+            }
+            experiences.append(val_exp)
+        vals["Experiencia"] = experiences
+        return vals
+
+    @classmethod
+    def get_skills(self, all_skills, vals):
+        skills = []
+        for skill in all_skills:
+            val_skill = {
+                "Skill": skill.skill_id.name,
+                "Nivel": skill.skill_level_id.name,
+            }
+            skills.append(val_skill)
+        vals["Habilidades"] = skills
+        return vals
+
     # /hr_app/api/v1/users/search
-    @http.route('/hr_app/api/' + version + '/users/search', auth="public", methods=['GET'], csrf=False, type='http', cors="*")
+    @http.route('/hr_app/api/' + version + '/users/search', auth="public", methods=['GET'], csrf=False, type='json', cors="*")
     def search(self, **kw):
         try:
             # Validación de la api-key
@@ -86,7 +133,6 @@ class User(http.Controller):
                 "Habilidades": [],
             }
             email = request.jsonrequest['params']['login']
-            # Query
             query = [('login', '=', email), ('active', '=', True)]
             get_user = http.request.env["res.users"].sudo().search(query)
             if not get_user:
@@ -94,33 +140,10 @@ class User(http.Controller):
                 data['message'] = 'No existe usuario'
                 return data
             users = []
-            experiences = []
-            skills = []
             for user in get_user:
-                # add employee
-                get_employee = http.request.env["hr.employee"].sudo().search([('user_id', '=', user.id)])
-                if get_employee:
-                    for employee in get_employee:
-                        vals["Genero"] = employee.gender
-                        vals["Campo"] = employee.study_field
-                        vals["Study"] = employee.study_school
-                        vals["Nivel"] = employee.certificate
-                        if employee.resume_line_ids:
-                            for experience in employee.resume_line_ids:
-                                val_exp = {
-                                    "Sitio": experience.name,
-                                    "Descripcion": experience.description,
-                                }
-                                experiences.append(val_exp)
-                            vals["Experiencia"] = experiences
-                        if employee.employee_skill_ids:
-                            for skill in employee.employee_skill_ids:
-                                val_skill = {
-                                    "Skill": skill.skill_id.name,
-                                    "Nivel": skill.skill_level_id.name,
-                                }
-                                skills.append(val_skill)
-                            vals["Habilidades"] = skills
+                employee_ids = User.get_employee(user, vals)
+                if employee_ids:
+                    _logger.info('<<Load info del Employee>>')
                 vals["Id"] = user.id
                 vals["Login"] = user.login
                 vals["Partner"] = user.partner_id.id
@@ -133,6 +156,78 @@ class User(http.Controller):
             data['status'] = 200
             data['response'] = users
             data['message'] = 'Usuario recuperado correctamente'
+        except Exception as e:
+            raise Exception(e)
+        return data
+
+    # /hr_app/api/v1/experiences/get
+    @http.route('/hr_app/api/' + version + '/experiences/get', auth="public", methods=['GET'], csrf=False, type='json', cors="*")
+    def get(self, **kw):
+        try:
+            data = {
+                "status": "",
+                "response": [],
+                "message": "",
+            }
+            vals = {
+                "Experiencia": []
+            }
+            email = request.jsonrequest['params']['login']
+            query = [('login', '=', email), ('active', '=', True)]
+            get_user = http.request.env["res.users"].sudo().search(query)
+            if not get_user:
+                data['status'] = 404
+                data['message'] = 'No existe usuario'
+                return data
+            experiences = []
+            for user in get_user:
+                obj_employee = http.request.env["hr.employee"].sudo().search([('user_id', '=', user.id)])
+                if obj_employee:
+                    for employee in obj_employee:
+                        if employee.resume_line_ids:
+                            all_experiences = employee.resume_line_ids
+                            experience_ids = User.get_experience(all_experiences, vals)
+                            if experience_ids:
+                                experiences.append(experience_ids)
+                                data['status'] = 200
+                                data['response'] = experiences
+            data['message'] = 'Experiencias recuperadas correctamente'
+        except Exception as e:
+            raise Exception(e)
+        return data
+
+    # /hr_app/api/v1/skills/get
+    @http.route('/hr_app/api/' + version + '/skills/get', auth="public", methods=['GET'], csrf=False, type='json', cors="*")
+    def get(self, **kw):
+        try:
+            data = {
+                "status": "",
+                "response": [],
+                "message": "",
+            }
+            vals = {
+                "Habilidades": []
+            }
+            email = request.jsonrequest['params']['login']
+            query = [('login', '=', email), ('active', '=', True)]
+            get_user = http.request.env["res.users"].sudo().search(query)
+            if not get_user:
+                data['status'] = 404
+                data['message'] = 'No existe usuario'
+                return data
+            experiences = []
+            for user in get_user:
+                obj_employee = http.request.env["hr.employee"].sudo().search([('user_id', '=', user.id)])
+                if obj_employee:
+                    for employee in obj_employee:
+                        if employee.employee_skill_ids:
+                            all_skills = employee.employee_skill_ids
+                            skill_ids = User.get_skills(all_skills, vals)
+                            if skill_ids:
+                                experiences.append(skill_ids)
+                                data['status'] = 200
+                                data['response'] = experiences
+            data['message'] = 'Habilidades recuperadas correctamente'
         except Exception as e:
             raise Exception(e)
         return data
