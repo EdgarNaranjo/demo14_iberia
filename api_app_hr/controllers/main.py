@@ -25,51 +25,6 @@ class User(http.Controller):
         else:
             return '{"status": 200, "response": "Success", "message": "API key valid"}'
 
-    @classmethod
-    def get_employee(self, user, vals):
-        obj_employee = http.request.env["hr.employee"].sudo().search([('user_id', '=', user.id)])
-        if obj_employee:
-            for employee in obj_employee:
-                vals["Genero"] = employee.gender
-                vals["Campo"] = employee.study_field
-                vals["Study"] = employee.study_school
-                vals["Nivel"] = employee.certificate
-                if employee.resume_line_ids:
-                    all_experiences = employee.resume_line_ids
-                    experience_ids = User.get_experience(all_experiences, vals)
-                    if experience_ids:
-                        _logger.info('<<Experiencies recuperadas>>')
-                if employee.employee_skill_ids:
-                    all_skills = employee.employee_skill_ids
-                    skill_ids = User.get_skills(all_skills, vals)
-                    if skill_ids:
-                        _logger.info('<<Habilidades recuperadas>>')
-        return vals
-
-    @classmethod
-    def get_experience(self, all_experiences, vals):
-        experiences = []
-        for experience in all_experiences:
-            val_exp = {
-                "Sitio": experience.name,
-                "Descripcion": experience.description,
-            }
-            experiences.append(val_exp)
-        vals["Experiencia"] = experiences
-        return vals
-
-    @classmethod
-    def get_skills(self, all_skills, vals):
-        skills = []
-        for skill in all_skills:
-            val_skill = {
-                "Skill": skill.skill_id.name,
-                "Nivel": skill.skill_level_id.name,
-            }
-            skills.append(val_skill)
-        vals["Habilidades"] = skills
-        return vals
-
     # /hr_app/api/v1/users/search
     @http.route('/hr_app/api/' + version + '/users/search', auth="public", methods=['GET'], csrf=False, type='json', cors="*")
     def search(self, **kw):
@@ -162,7 +117,7 @@ class User(http.Controller):
 
     # /hr_app/api/v1/experiences/get
     @http.route('/hr_app/api/' + version + '/experiences/get', auth="public", methods=['GET'], csrf=False, type='json', cors="*")
-    def get(self, **kw):
+    def get_experiences(self, **kw):
         try:
             data = {
                 "status": "",
@@ -198,7 +153,7 @@ class User(http.Controller):
 
     # /hr_app/api/v1/skills/get
     @http.route('/hr_app/api/' + version + '/skills/get', auth="public", methods=['GET'], csrf=False, type='json', cors="*")
-    def get(self, **kw):
+    def get_skills(self, **kw):
         try:
             data = {
                 "status": "",
@@ -231,3 +186,66 @@ class User(http.Controller):
         except Exception as e:
             raise Exception(e)
         return data
+
+    @classmethod
+    def get_employee(self, user, vals):
+        obj_employee = http.request.env["hr.employee"].sudo().search([('user_id', '=', user.id)])
+        if obj_employee:
+            for employee in obj_employee:
+                vals["Genero"] = employee.gender
+                vals["Campo"] = employee.study_field
+                vals["Study"] = employee.study_school
+                vals["Nivel"] = employee.certificate
+                if employee.resume_line_ids:
+                    all_experiences = employee.resume_line_ids
+                    experience_ids = User.get_experience(all_experiences, vals)
+                    if experience_ids:
+                        _logger.info('<<Experiencies recuperadas>>')
+                if employee.employee_skill_ids:
+                    all_skills = employee.employee_skill_ids
+                    skill_ids = User.get_skills(all_skills, vals)
+                    if skill_ids:
+                        _logger.info('<<Habilidades recuperadas>>')
+        return vals
+
+    @classmethod
+    def get_experience(self, all_experiences, vals):
+        experiences = []
+        for experience in all_experiences:
+            val_exp = {
+                "Sitio": experience.name,
+                "Descripcion": experience.description,
+            }
+            experiences.append(val_exp)
+        vals["Experiencia"] = experiences
+        return vals
+
+    @classmethod
+    def get_skills(self, all_skills, vals):
+        skills = []
+        for skill in all_skills:
+            val_skill = {
+                "Skill": skill.skill_id.name,
+                "Nivel": skill.skill_level_id.name,
+            }
+            skills.append(val_skill)
+        vals["Habilidades"] = skills
+        return vals
+
+    # /hr_app/api/v1/user/register
+    @http.route('/hr_app/api/' + version + '/user/register', auth="public", methods=['POST'], csrf=False, type='json', cors="*")
+    def push_register(self, **kw):
+        try:
+            data_register = {
+                'name': request.jsonrequest.get('name'),
+                'login': request.jsonrequest.get('login'),
+            }
+            new_user = http.request.env['res.users'].sudo().create(data_register)
+        except Exception as e:
+            return {'status': 404, 'message': 'Register Error'}
+        return {'status': 200, 'user_id': new_user.id, 'message': 'Registration request saved successfully'}
+
+    @http.route('/' + version + '/', auth="public", methods=['GET'], csrf=False, type='json', cors="*")
+    def hello(self):
+        return {'status': 200, 'message': 'Hello API APP'}
+
